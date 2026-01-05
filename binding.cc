@@ -969,6 +969,54 @@ bare_ffmpeg_find_encoder_by_id(js_env_t *env, js_receiver_t, uint32_t id) {
   return handle;
 }
 
+static js_arraybuffer_t
+bare_ffmpeg_find_decoder_by_name(js_env_t *env, js_receiver_t, std::string name) {
+  int err;
+
+  const AVCodec *decoder = avcodec_find_decoder_by_name(name.c_str());
+
+  if (decoder == NULL) {
+    err = js_throw_errorf(env, NULL, "No decoder found with name '%s'", name.c_str());
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+
+  js_arraybuffer_t handle;
+
+  bare_ffmpeg_codec_t *context;
+  err = js_create_arraybuffer(env, context, handle);
+  assert(err == 0);
+
+  context->handle = decoder;
+
+  return handle;
+}
+
+static js_arraybuffer_t
+bare_ffmpeg_find_encoder_by_name(js_env_t *env, js_receiver_t, std::string name) {
+  int err;
+
+  const AVCodec *encoder = avcodec_find_encoder_by_name(name.c_str());
+
+  if (encoder == NULL) {
+    err = js_throw_errorf(env, NULL, "No encoder found with name '%s'", name.c_str());
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+
+  js_arraybuffer_t handle;
+
+  bare_ffmpeg_codec_t *context;
+  err = js_create_arraybuffer(env, context, handle);
+  assert(err == 0);
+
+  context->handle = encoder;
+
+  return handle;
+}
+
 static std::string
 bare_ffmpeg_get_codec_name_by_id(js_env_t *env, js_receiver_t, uint32_t id) {
   auto name = avcodec_get_name((enum AVCodecID) id);
@@ -4710,6 +4758,8 @@ bare_ffmpeg_exports(js_env_t *env, js_value_t *exports) {
 
   V("findDecoderByID", bare_ffmpeg_find_decoder_by_id)
   V("findEncoderByID", bare_ffmpeg_find_encoder_by_id)
+  V("findDecoderByName", bare_ffmpeg_find_decoder_by_name)
+  V("findEncoderByName", bare_ffmpeg_find_encoder_by_name)
   V("getCodecNameByID", bare_ffmpeg_get_codec_name_by_id)
   V("getSampleFormatNameByID", bare_ffmpeg_get_sample_format_name_by_id)
   V("getPixelFormatNameByID", bare_ffmpeg_get_pixel_format_name_by_id)
@@ -5039,6 +5089,7 @@ bare_ffmpeg_exports(js_env_t *env, js_value_t *exports) {
   V(AV_PIX_FMT_NV21)
   V(AV_PIX_FMT_NV24)
   V(AV_PIX_FMT_VIDEOTOOLBOX)
+  V(AV_PIX_FMT_MEDIACODEC)
 
   V(AV_HWDEVICE_TYPE_VIDEOTOOLBOX)
   V(AV_HWDEVICE_TYPE_CUDA)
@@ -5046,6 +5097,7 @@ bare_ffmpeg_exports(js_env_t *env, js_value_t *exports) {
   V(AV_HWDEVICE_TYPE_DXVA2)
   V(AV_HWDEVICE_TYPE_QSV)
   V(AV_HWDEVICE_TYPE_D3D11VA)
+  V(AV_HWDEVICE_TYPE_MEDIACODEC)
 
   V(AV_HWFRAME_MAP_READ)
   V(AV_HWFRAME_MAP_WRITE)

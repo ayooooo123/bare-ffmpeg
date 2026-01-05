@@ -1,3 +1,4 @@
+const binding = require('./binding')
 const AudioFIFO = require('./lib/audio-fifo')
 const ChannelLayout = require('./lib/channel-layout')
 const Codec = require('./lib/codec')
@@ -26,6 +27,29 @@ const Samples = require('./lib/samples')
 const Scaler = require('./lib/scaler')
 const Stream = require('./lib/stream')
 const log = require('./lib/log')
+
+// Helper to find hardware encoders by name (e.g., 'h264_videotoolbox', 'h264_mediacodec')
+function findEncoderByName(name) {
+  const handle = binding.findEncoderByName(name)
+  return { _handle: handle, name }
+}
+
+// Helper to find hardware decoders by name (e.g., 'hevc_mediacodec', 'h264_videotoolbox')
+function findDecoderByName(name) {
+  const handle = binding.findDecoderByName(name)
+  return { _handle: handle, name }
+}
+
+// Create a CodecContext from a named encoder/decoder
+function createEncoderContext(name) {
+  const encoder = findEncoderByName(name)
+  return new CodecContext(encoder)
+}
+
+function createDecoderContext(name) {
+  const decoder = findDecoderByName(name)
+  return new CodecContext(decoder)
+}
 
 exports.AudioFIFO = AudioFIFO
 exports.ChannelLayout = ChannelLayout
@@ -58,3 +82,9 @@ exports.Resampler = Resampler
 exports.log = log
 
 exports.constants = require('./lib/constants')
+
+// Hardware codec helpers
+exports.findEncoderByName = findEncoderByName
+exports.findDecoderByName = findDecoderByName
+exports.createEncoderContext = createEncoderContext
+exports.createDecoderContext = createDecoderContext
