@@ -6,7 +6,7 @@ find_package(cmake-ports REQUIRED PATHS node_modules/cmake-ports)
 
 project(bare_ffmpeg C CXX)
 
-option(BARE_FFMPEG_ENABLE_GPL "Enable GPL-licensed features (e.g., x264)" OFF)
+option(BARE_FFMPEG_ENABLE_GPL "Enable GPL-licensed features (e.g., x264)" ON)
 
 fetch_package("github:holepunchto/libjstl#098664c")
 

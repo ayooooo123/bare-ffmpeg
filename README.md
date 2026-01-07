@@ -109,7 +109,7 @@ A few compile options can be configured to customize the addon. Compile options 
 
 | Option                   | Default | Description                              |
 | :----------------------- | :------ | :--------------------------------------- |
-| `BARE_FFMPEG_ENABLE_GPL` | `OFF`   | Enable GPL-licensed features (e.g, x264) |
+| `BARE_FFMPEG_ENABLE_GPL` | `ON`    | Enable GPL-licensed features (e.g, x264) |
 
 ## License
 

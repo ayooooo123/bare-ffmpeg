@@ -727,6 +727,27 @@ bare_ffmpeg_format_context_write_trailer(
   }
 }
 
+// Flush the muxer's internal interleave buffer by writing a NULL packet
+// This is essential for HLS segment finalization - ensures all buffered
+// audio/video data is written to IOContext before we finalize the segment
+static void
+bare_ffmpeg_format_context_flush(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_format_context_t, 1> context
+) {
+  int err;
+
+  // Passing NULL to av_interleaved_write_frame flushes the interleave buffer
+  err = av_interleaved_write_frame(context->handle, NULL);
+  if (err < 0) {
+    err = js_throw_error(env, NULL, av_err2str(err));
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+}
+
 static void
 bare_ffmpeg_format_context_dump(
   js_env_t *env,
@@ -4741,6 +4762,7 @@ bare_ffmpeg_exports(js_env_t *env, js_value_t *exports) {
   V("writeFormatContextHeader", bare_ffmpeg_format_context_write_header)
   V("writeFormatContextFrame", bare_ffmpeg_format_context_write_frame)
   V("writeFormatContextTrailer", bare_ffmpeg_format_context_write_trailer)
+  V("flushFormatContext", bare_ffmpeg_format_context_flush)
   V("dumpFormatContext", bare_ffmpeg_format_context_dump)
   V("getFormatContextOutputFormat", get_bare_ffmpeg_format_context_output_format)
   V("getFormatContextInputFormat", get_bare_ffmpeg_format_context_input_format)
