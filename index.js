@@ -1,5 +1,6 @@
 const binding = require('./binding')
 const AudioFIFO = require('./lib/audio-fifo')
+const BitstreamFilter = require('./lib/bitstream-filter')
 const ChannelLayout = require('./lib/channel-layout')
 const Codec = require('./lib/codec')
 const CodecContext = require('./lib/codec-context')
@@ -52,6 +53,7 @@ function createDecoderContext(name) {
 }
 
 exports.AudioFIFO = AudioFIFO
+exports.BitstreamFilter = BitstreamFilter
 exports.ChannelLayout = ChannelLayout
 exports.Codec = Codec
 exports.CodecContext = CodecContext

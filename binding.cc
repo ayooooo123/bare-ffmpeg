@@ -14,6 +14,7 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libavcodec/bsf.h>
 #include <libavcodec/codec.h>
 #include <libavcodec/codec_id.h>
 #include <libavcodec/codec_par.h>
@@ -147,6 +148,10 @@ typedef struct {
 typedef struct {
   AVHWFramesConstraints *handle;
 } bare_ffmpeg_hw_frames_constraints_t;
+
+typedef struct {
+  AVBSFContext *handle;
+} bare_ffmpeg_bsf_context_t;
 
 static uv_once_t bare_ffmpeg__init_guard = UV_ONCE_INIT;
 
@@ -4720,6 +4725,234 @@ bare_ffmpeg_copy_options(
   }
 }
 
+// ============================================================================
+// BitstreamFilter API - for converting H.264 AVCC to Annex B format (and other BSF operations)
+// ============================================================================
+
+static js_arraybuffer_t
+bare_ffmpeg_bsf_init(
+  js_env_t *env,
+  js_receiver_t,
+  std::string name
+) {
+  int err;
+
+  const AVBitStreamFilter *filter = av_bsf_get_by_name(name.c_str());
+
+  if (filter == NULL) {
+    err = js_throw_errorf(env, NULL, "No bitstream filter found with name '%s'", name.c_str());
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+
+  js_arraybuffer_t handle;
+
+  bare_ffmpeg_bsf_context_t *context;
+  err = js_create_arraybuffer(env, context, handle);
+  assert(err == 0);
+
+  err = av_bsf_alloc(filter, &context->handle);
+  if (err < 0) {
+    err = js_throw_error(env, NULL, av_err2str(err));
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+
+  return handle;
+}
+
+static void
+bare_ffmpeg_bsf_destroy(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context
+) {
+  av_bsf_free(&context->handle);
+}
+
+// Copy codec parameters to BSF input parameters
+static void
+bare_ffmpeg_bsf_set_input_codec_parameters(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context,
+  js_arraybuffer_span_of_t<bare_ffmpeg_codec_parameters_t, 1> parameters
+) {
+  int err;
+
+  err = avcodec_parameters_copy(context->handle->par_in, parameters->handle);
+  if (err < 0) {
+    err = js_throw_error(env, NULL, av_err2str(err));
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+}
+
+// Set input time base
+static void
+bare_ffmpeg_bsf_set_input_time_base(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context,
+  int num,
+  int den
+) {
+  context->handle->time_base_in.num = num;
+  context->handle->time_base_in.den = den;
+}
+
+// Get input time base
+static js_arraybuffer_t
+bare_ffmpeg_bsf_get_input_time_base(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context
+) {
+  int err;
+
+  js_arraybuffer_t result;
+
+  int32_t *data;
+  err = js_create_arraybuffer(env, 2, data, result);
+  assert(err == 0);
+
+  data[0] = context->handle->time_base_in.num;
+  data[1] = context->handle->time_base_in.den;
+
+  return result;
+}
+
+// Get output time base (available after init)
+static js_arraybuffer_t
+bare_ffmpeg_bsf_get_output_time_base(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context
+) {
+  int err;
+
+  js_arraybuffer_t result;
+
+  int32_t *data;
+  err = js_create_arraybuffer(env, 2, data, result);
+  assert(err == 0);
+
+  data[0] = context->handle->time_base_out.num;
+  data[1] = context->handle->time_base_out.den;
+
+  return result;
+}
+
+// Get output codec parameters (available after init)
+static js_arraybuffer_t
+bare_ffmpeg_bsf_get_output_codec_parameters(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context
+) {
+  int err;
+
+  js_arraybuffer_t handle;
+
+  bare_ffmpeg_codec_parameters_t *parameters;
+  err = js_create_arraybuffer(env, parameters, handle);
+  assert(err == 0);
+
+  // Allocate new codec parameters and copy from BSF output
+  parameters->handle = avcodec_parameters_alloc();
+  err = avcodec_parameters_copy(parameters->handle, context->handle->par_out);
+  if (err < 0) {
+    avcodec_parameters_free(&parameters->handle);
+    err = js_throw_error(env, NULL, av_err2str(err));
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+
+  return handle;
+}
+
+// Initialize the BSF context (must be called after setting input parameters)
+static void
+bare_ffmpeg_bsf_init_context(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context
+) {
+  int err;
+
+  err = av_bsf_init(context->handle);
+  if (err < 0) {
+    err = js_throw_error(env, NULL, av_err2str(err));
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+}
+
+// Send a packet to the BSF for filtering
+// Returns true if the packet was accepted, false if no more packets are accepted (EAGAIN/EOF)
+static bool
+bare_ffmpeg_bsf_send_packet(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context,
+  std::optional<js_arraybuffer_span_of_t<bare_ffmpeg_packet_t, 1>> packet
+) {
+  int err;
+
+  if (packet) {
+    err = av_bsf_send_packet(context->handle, packet.value()->handle);
+  } else {
+    // Send NULL to signal end of stream
+    err = av_bsf_send_packet(context->handle, NULL);
+  }
+
+  if (err < 0 && err != AVERROR(EAGAIN) && err != AVERROR_EOF) {
+    err = js_throw_error(env, NULL, av_err2str(err));
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+
+  return err == 0;
+}
+
+// Receive a filtered packet from the BSF
+// Returns true if a packet was received, false if no packet available (EAGAIN/EOF)
+static bool
+bare_ffmpeg_bsf_receive_packet(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context,
+  js_arraybuffer_span_of_t<bare_ffmpeg_packet_t, 1> packet
+) {
+  int err;
+
+  err = av_bsf_receive_packet(context->handle, packet->handle);
+  if (err < 0 && err != AVERROR(EAGAIN) && err != AVERROR_EOF) {
+    err = js_throw_error(env, NULL, av_err2str(err));
+    assert(err == 0);
+
+    throw js_pending_exception;
+  }
+
+  return err == 0;
+}
+
+// Flush the BSF (reset state between seeks)
+static void
+bare_ffmpeg_bsf_flush(
+  js_env_t *env,
+  js_receiver_t,
+  js_arraybuffer_span_of_t<bare_ffmpeg_bsf_context_t, 1> context
+) {
+  av_bsf_flush(context->handle);
+}
+
 static js_value_t *
 bare_ffmpeg_exports(js_env_t *env, js_value_t *exports) {
   uv_once(&bare_ffmpeg__init_guard, bare_ffmpeg__on_init);
@@ -4982,6 +5215,18 @@ bare_ffmpeg_exports(js_env_t *env, js_value_t *exports) {
   V("getPacketFlags", bare_ffmpeg_packet_get_flags)
   V("setPacketFlags", bare_ffmpeg_packet_set_flags)
   V("copyPacketProps", bare_ffmpeg_packet_copy_props)
+
+  V("initBSFContext", bare_ffmpeg_bsf_init)
+  V("destroyBSFContext", bare_ffmpeg_bsf_destroy)
+  V("setBSFInputCodecParameters", bare_ffmpeg_bsf_set_input_codec_parameters)
+  V("setBSFInputTimeBase", bare_ffmpeg_bsf_set_input_time_base)
+  V("getBSFInputTimeBase", bare_ffmpeg_bsf_get_input_time_base)
+  V("getBSFOutputTimeBase", bare_ffmpeg_bsf_get_output_time_base)
+  V("getBSFOutputCodecParameters", bare_ffmpeg_bsf_get_output_codec_parameters)
+  V("initBSF", bare_ffmpeg_bsf_init_context)
+  V("sendBSFPacket", bare_ffmpeg_bsf_send_packet)
+  V("receiveBSFPacket", bare_ffmpeg_bsf_receive_packet)
+  V("flushBSF", bare_ffmpeg_bsf_flush)
 
   V("getSideDataType", bare_ffmpeg_side_data_get_type)
   V("getSideDataName", bare_ffmpeg_side_data_get_name)
