@@ -27,6 +27,29 @@ set(args
 
   --enable-pic
   --enable-cross-compile
+
+  --enable-decoder=hevc
+  --enable-decoder=h264
+  --enable-decoder=vp8
+  --enable-decoder=vp9
+  --enable-decoder=av1
+  --enable-decoder=mpeg4
+  --enable-decoder=mpeg2video
+  --enable-decoder=mjpeg
+  --enable-decoder=png
+  --enable-decoder=gif
+  --enable-decoder=webp
+  --enable-decoder=prores
+  --enable-decoder=dnxhd
+  --enable-decoder=ffv1
+  --enable-decoder=rawvideo
+  --enable-decoder=aac
+  --enable-decoder=mp3
+  --enable-decoder=opus
+  --enable-decoder=flac
+  --enable-decoder=vorbis
+  --enable-decoder=pcm_s16le
+  --enable-decoder=pcm_s24le
 )
 
 if(CMAKE_BUILD_TYPE MATCHES "Release")

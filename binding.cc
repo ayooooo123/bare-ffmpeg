@@ -443,6 +443,10 @@ bare_ffmpeg_format_context_open_input_with_io(
   context->handle->pb = io->handle;
   context->handle->opaque = (void *) context;
 
+  // Limit probing to prevent crashes on files with unsupported codecs
+  context->handle->probesize = 5000000;  // 5MB max
+  context->handle->max_analyze_duration = 5000000;  // 5 seconds max
+
   err = avformat_open_input(&context->handle, NULL, NULL, NULL);
   if (err < 0) {
     avformat_free_context(context->handle);
@@ -490,6 +494,10 @@ bare_ffmpeg_format_context_open_input_with_format(
 
   context->handle = avformat_alloc_context();
   context->handle->opaque = (void *) context;
+
+  // Limit probing to prevent crashes on files with unsupported codecs
+  context->handle->probesize = 5000000;
+  context->handle->max_analyze_duration = 5000000;
 
   err = avformat_open_input(&context->handle, url.c_str(), format->handle, &options->handle);
   if (err < 0) {
@@ -1247,6 +1255,17 @@ bare_ffmpeg_codec_context_open(
 ) {
   int err;
 
+  // Validate codec exists before attempting to open (prevents crash on unsupported codecs)
+  if (context->handle->codec == NULL) {
+    const AVCodec *codec = avcodec_find_decoder(context->handle->codec_id);
+    if (codec == NULL) {
+      err = js_throw_errorf(env, NULL, "No decoder available for codec id %d", context->handle->codec_id);
+      assert(err == 0);
+      throw js_pending_exception;
+    }
+    context->handle->codec = codec;
+  }
+
   err = avcodec_open2(context->handle, context->handle->codec, NULL);
   if (err < 0) {
     err = js_throw_error(env, NULL, av_err2str(err));
@@ -1468,6 +1487,16 @@ bare_ffmpeg_codec_context_open_with_options(
   js_arraybuffer_span_of_t<bare_ffmpeg_dictionary_t, 1> options
 ) {
   int err;
+
+  if (context->handle->codec == NULL) {
+    const AVCodec *codec = avcodec_find_decoder(context->handle->codec_id);
+    if (codec == NULL) {
+      err = js_throw_errorf(env, NULL, "No decoder available for codec id %d", context->handle->codec_id);
+      assert(err == 0);
+      throw js_pending_exception;
+    }
+    context->handle->codec = codec;
+  }
 
   err = avcodec_open2(context->handle, context->handle->codec, &options->handle);
   if (err < 0) {
@@ -3818,6 +3847,18 @@ bare_ffmpeg_scaler_init(
 ) {
   int err;
 
+  if (source_format < 0 || source_width <= 0 || source_height <= 0) {
+    err = js_throw_errorf(env, NULL, "Invalid source: format=%lld width=%d height=%d", source_format, source_width, source_height);
+    assert(err == 0);
+    throw js_pending_exception;
+  }
+
+  if (target_format < 0 || target_width <= 0 || target_height <= 0) {
+    err = js_throw_errorf(env, NULL, "Invalid target: format=%lld width=%d height=%d", target_format, target_width, target_height);
+    assert(err == 0);
+    throw js_pending_exception;
+  }
+
   js_arraybuffer_t handle;
 
   bare_ffmpeg_scaler_t *scaler;
@@ -3836,6 +3877,12 @@ bare_ffmpeg_scaler_init(
     NULL,
     NULL
   );
+
+  if (scaler->handle == NULL) {
+    err = js_throw_errorf(env, NULL, "Failed to create scaler for format %lld -> %lld", source_format, target_format);
+    assert(err == 0);
+    throw js_pending_exception;
+  }
 
   return handle;
 }
