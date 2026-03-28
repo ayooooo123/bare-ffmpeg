@@ -79,7 +79,7 @@ jobs:
         if: ${{ matrix.platform == 'win32' }}
       - run: npm install -g bare-runtime bare-make
       - run: npm install
-      - run: bare-make generate --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} ${{ matrix.flags }}
+      - run: bare-make generate --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} -D BARE_FFMPEG_ENABLE_GPL=ON ${{ matrix.flags }}
       - run: bare-make build
       - run: bare-make install
       - uses: actions/upload-artifact@v4
