@@ -132,13 +132,23 @@ jobs:
           path: prebuilds/darwin-x64
       - name: Create universal binary
         run: |
+          echo "== downloaded prebuilds tree =="
+          find prebuilds -type f | sort
+          # cmake-bare installs the addon as bare-ffmpeg.bare (SUFFIX .bare).
+          arm64_bin=$(find prebuilds/darwin-arm64 -name 'bare-ffmpeg.bare' | head -1)
+          x64_bin=$(find prebuilds/darwin-x64 -name 'bare-ffmpeg.bare' | head -1)
+          echo "arm64: $arm64_bin"
+          echo "x64:   $x64_bin"
+          test -n "$arm64_bin" && test -n "$x64_bin"
           mkdir -p prebuilds/darwin-universal
-          lipo -create \
-            prebuilds/darwin-arm64/bare-ffmpeg.node \
-            prebuilds/darwin-x64/bare-ffmpeg.node \
-            -output prebuilds/darwin-universal/bare-ffmpeg.node
-          lipo -info prebuilds/darwin-universal/bare-ffmpeg.node
-          file prebuilds/darwin-universal/bare-ffmpeg.node
+          lipo -create "$arm64_bin" "$x64_bin" \
+            -output prebuilds/darwin-universal/bare-ffmpeg.bare
+          # Publish under both names: .bare for Bare's resolver, .node for
+          # bare-pack consumers (e.g. PearTube) that look up the .node path.
+          cp prebuilds/darwin-universal/bare-ffmpeg.bare \
+            prebuilds/darwin-universal/bare-ffmpeg.node
+          lipo -info prebuilds/darwin-universal/bare-ffmpeg.bare
+          file prebuilds/darwin-universal/bare-ffmpeg.bare
       - name: Smoke test (universal binary loads)
         run: |
           rm -rf prebuilds/darwin-arm64 prebuilds/darwin-x64
@@ -147,7 +157,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f prebuilds/darwin-universal/bare-ffmpeg.node
+          git add -f prebuilds/darwin-universal/bare-ffmpeg.bare \
+            prebuilds/darwin-universal/bare-ffmpeg.node
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
