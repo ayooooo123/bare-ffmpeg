@@ -1,6 +1,9 @@
 name: Prebuild
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - claude/bare-ffmpeg-prebuilds-bmgfay
 jobs:
   prebuild:
     strategy:
@@ -148,6 +151,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "build: add darwin-universal prebuild"
+            git commit -m "build: add darwin-universal prebuild [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
