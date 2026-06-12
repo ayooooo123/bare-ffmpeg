@@ -1,9 +1,6 @@
 name: Prebuild
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - claude/bare-ffmpeg-prebuilds-bmgfay
 jobs:
   prebuild:
     strategy:
@@ -155,10 +152,6 @@ jobs:
           mkdir -p prebuilds/darwin-universal
           lipo -create "$arm64_bin" "$x64_bin" \
             -output prebuilds/darwin-universal/bare-ffmpeg.bare
-          # Publish under both names: .bare for Bare's resolver, .node for
-          # bare-pack consumers (e.g. PearTube) that look up the .node path.
-          cp prebuilds/darwin-universal/bare-ffmpeg.bare \
-            prebuilds/darwin-universal/bare-ffmpeg.node
           lipo -info prebuilds/darwin-universal/bare-ffmpeg.bare
           file prebuilds/darwin-universal/bare-ffmpeg.bare
       - name: Smoke test (universal binary loads)
@@ -169,8 +162,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f prebuilds/darwin-universal/bare-ffmpeg.bare \
-            prebuilds/darwin-universal/bare-ffmpeg.node
+          git add -f prebuilds/darwin-universal/bare-ffmpeg.bare
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
