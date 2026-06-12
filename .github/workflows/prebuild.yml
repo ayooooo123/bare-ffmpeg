@@ -4,6 +4,7 @@ on:
 jobs:
   prebuild:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-22.04
@@ -98,3 +99,55 @@ jobs:
         with:
           name: prebuilds
           path: prebuilds
+  # Combine the per-arch macOS builds into a single universal Mach-O at
+  # prebuilds/darwin-universal/bare-ffmpeg.node and commit it back to the
+  # branch. Consumers that bundle with bare-pack (e.g. PearTube) resolve the
+  # macOS addon from the darwin-universal path, so it must be a committed,
+  # real binary (not an LFS pointer).
+  darwin-universal:
+    name: darwin-universal
+    needs: prebuild
+    if: ${{ always() }}
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - run: npm install -g bare-runtime
+      - uses: actions/download-artifact@v4
+        with:
+          name: darwin-arm64
+          path: prebuilds
+      - uses: actions/download-artifact@v4
+        with:
+          name: darwin-x64
+          path: prebuilds
+      - name: Create universal binary
+        run: |
+          mkdir -p prebuilds/darwin-universal
+          lipo -create \
+            prebuilds/darwin-arm64/bare-ffmpeg.node \
+            prebuilds/darwin-x64/bare-ffmpeg.node \
+            -output prebuilds/darwin-universal/bare-ffmpeg.node
+          lipo -info prebuilds/darwin-universal/bare-ffmpeg.node
+          file prebuilds/darwin-universal/bare-ffmpeg.node
+      - name: Smoke test (universal binary loads)
+        run: |
+          rm -rf prebuilds/darwin-arm64 prebuilds/darwin-x64
+          bare -e "require('./')"
+      - name: Commit prebuild
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f prebuilds/darwin-universal/bare-ffmpeg.node
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "build: add darwin-universal prebuild"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
