@@ -59,8 +59,16 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.tags }}
+    # The win32 build is known-broken upstream (GPL x264 does not yet compile
+    # with clang-cl on Windows). Keep it in the matrix for visibility but don't
+    # let it fail the whole run / block the committed prebuilds.
+    continue-on-error: ${{ matrix.platform == 'win32' }}
     steps:
       - uses: actions/checkout@v4
+      # Drop any prebuilds committed to the branch (e.g. darwin-universal) so
+      # they don't get bundled into this job's per-arch artifact.
+      - run: rm -rf prebuilds
+        shell: bash
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -122,6 +130,10 @@ jobs:
         with:
           node-version: lts/*
       - run: npm install -g bare-runtime
+      # Start from a clean slate so a previously committed darwin-universal
+      # can't interfere with the freshly downloaded per-arch binaries.
+      - run: rm -rf prebuilds
+        shell: bash
       - uses: actions/download-artifact@v4
         with:
           name: darwin-arm64

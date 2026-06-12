@@ -135,11 +135,7 @@ if(WIN32)
 endif()
 
 declare_port(
-  # Pin to a specific commit rather than the moving "stable" branch. The
-  # Windows clang-cl patch below is tied to x264's configure script, which
-  # drifts on stable and breaks the patch (and thus the win32 build). This
-  # commit is a known-good x264 stable revision the patch applies against.
-  "git:code.videolan.org/videolan/x264#31e19f92f00c7003fa115047ce50978bc98c3a0d"
+  "git:code.videolan.org/videolan/x264#stable"
   x264
   AUTOTOOLS
   BYPRODUCTS lib/${lib}
