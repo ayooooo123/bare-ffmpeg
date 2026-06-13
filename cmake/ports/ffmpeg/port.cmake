@@ -196,6 +196,7 @@ elseif(WIN32)
     --enable-d3d12va
     --enable-dxva2
     --enable-mediafoundation
+    --enable-encoder=h264_mf
   )
 endif()
 

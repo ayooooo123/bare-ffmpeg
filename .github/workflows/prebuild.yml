@@ -55,9 +55,11 @@ jobs:
           - os: windows-2022
             platform: win32
             arch: x64
+            flags: -D BARE_FFMPEG_ENABLE_GPL=OFF
           - os: windows-2022
             platform: win32
             arch: arm64
+            flags: -D BARE_FFMPEG_ENABLE_GPL=OFF
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.tags }}
     # The win32 build is known-broken upstream with clang-cl in some FFmpeg/x264
