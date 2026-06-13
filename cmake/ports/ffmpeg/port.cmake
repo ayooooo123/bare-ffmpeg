@@ -29,6 +29,83 @@ set(args
   --disable-programs
   --disable-network
 
+  # PearTube only uses bare-ffmpeg for probing/remuxing uploaded media and
+  # Chromecast compatibility transcodes. Start from a disabled FFmpeg and
+  # explicitly enable the demuxers, muxers, codecs, parsers, bitstream filters,
+  # and filters exercised by packages/backend/src/transcode/*.mjs.
+  --disable-everything
+  --enable-small
+
+  --enable-avcodec
+  --enable-avformat
+  --enable-avutil
+  --enable-swresample
+  --enable-swscale
+
+  --enable-demuxer=aac
+  --enable-demuxer=ac3
+  --enable-demuxer=aiff
+  --enable-demuxer=avi
+  --enable-demuxer=flac
+  --enable-demuxer=matroska
+  --enable-demuxer=mov
+  --enable-demuxer=mp3
+  --enable-demuxer=mpegts
+  --enable-demuxer=ogg
+  --enable-demuxer=wav
+
+  --enable-muxer=mp4
+  --enable-muxer=mov
+  --enable-muxer=mpegts
+
+  --enable-decoder=aac
+  --enable-decoder=ac3
+  --enable-decoder=alac
+  --enable-decoder=eac3
+  --enable-decoder=flac
+  --enable-decoder=h264
+  --enable-decoder=hevc
+  --enable-decoder=mp3
+  --enable-decoder=mpeg2video
+  --enable-decoder=mpeg4
+  --enable-decoder=opus
+  --enable-decoder=pcm_s16be
+  --enable-decoder=pcm_s16le
+  --enable-decoder=prores
+  --enable-decoder=theora
+  --enable-decoder=vorbis
+  --enable-decoder=vp8
+  --enable-decoder=vp9
+
+  --enable-encoder=aac
+  --enable-encoder=h264
+
+  --enable-parser=aac
+  --enable-parser=aac_latm
+  --enable-parser=ac3
+  --enable-parser=flac
+  --enable-parser=h264
+  --enable-parser=hevc
+  --enable-parser=mpegaudio
+  --enable-parser=mpeg4video
+  --enable-parser=opus
+  --enable-parser=vorbis
+  --enable-parser=vp8
+  --enable-parser=vp9
+
+  --enable-bsf=aac_adtstoasc
+  --enable-bsf=extract_extradata
+  --enable-bsf=h264_mp4toannexb
+  --enable-bsf=hevc_mp4toannexb
+  --enable-bsf=null
+
+  --enable-filter=aformat
+  --enable-filter=anull
+  --enable-filter=aresample
+  --enable-filter=format
+  --enable-filter=null
+  --enable-filter=scale
+
   --enable-pic
   --enable-cross-compile
 )
@@ -250,7 +327,7 @@ if("dav1d" IN_LIST features)
   find_port(dav1d)
 
   list(APPEND depends dav1d)
-  list(APPEND args --enable-libdav1d)
+  list(APPEND args --enable-libdav1d --enable-decoder=libdav1d)
   list(APPEND pkg_config_path "${dav1d_PREFIX}/lib/pkgconfig")
 
   target_link_libraries(avcodec INTERFACE dav1d)
@@ -260,7 +337,7 @@ if("svt-av1" IN_LIST features)
   find_port(svt-av1)
 
   list(APPEND depends svt-av1)
-  list(APPEND args --enable-libsvtav1)
+  list(APPEND args --enable-libsvtav1 --enable-encoder=libsvtav1)
   list(APPEND pkg_config_path "${svt-av1_PREFIX}/lib/pkgconfig")
 
   target_link_libraries(avcodec INTERFACE svt-av1)
@@ -270,7 +347,7 @@ if("x264" IN_LIST features)
   find_port(x264)
 
   list(APPEND depends x264)
-  list(APPEND args --enable-libx264)
+  list(APPEND args --enable-libx264 --enable-encoder=libx264)
   list(APPEND pkg_config_path "${x264_PREFIX}/lib/pkgconfig")
 
   target_link_libraries(avcodec INTERFACE x264)
@@ -280,7 +357,7 @@ if("opus" IN_LIST features)
   find_port(opus)
 
   list(APPEND depends opus)
-  list(APPEND args --enable-libopus)
+  list(APPEND args --enable-libopus --enable-decoder=libopus --enable-encoder=libopus)
   list(APPEND pkg_config_path "${opus_PREFIX}/lib/pkgconfig")
 
   target_link_libraries(avcodec INTERFACE opus)
@@ -292,6 +369,8 @@ if("vpx" IN_LIST features)
   list(APPEND depends vpx)
   list(APPEND args
     --enable-libvpx
+    --enable-decoder=libvpx_vp8
+    --enable-decoder=libvpx_vp9
     "--extra-cflags=-I${libvpx_PREFIX}/include"
     "--extra-ldflags=-L${libvpx_PREFIX}/lib"
   )
