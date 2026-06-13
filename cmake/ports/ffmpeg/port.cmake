@@ -31,6 +31,32 @@ set(args
 
   --enable-pic
   --enable-cross-compile
+
+  # Codec/format/protocol whitelist: only build what PearTube actually uses.
+  # --disable-autodetect only suppresses external-library auto-detection; the
+  # full set of built-in codecs is still compiled without these flags.
+  --disable-encoders
+  --enable-encoder=libx264,aac
+
+  --disable-decoders
+  --enable-decoder=h264,hevc,vp8,vp9,libdav1d,aac,alac,mp3,mp3float,libopus,opus,vorbis,flac,ac3,eac3,dca,truehd,pcm_alaw,pcm_f32le,pcm_mulaw,pcm_s16be,pcm_s16le,pcm_s24le,pcm_s32le,pcm_u8,mjpeg
+
+  --disable-muxers
+  --enable-muxer=mp4,mov,matroska,mpegts
+
+  --disable-demuxers
+  --enable-demuxer=aac,avi,flac,flv,h264,hevc,matroska,mov,mp3,mpegts,ogg,wav
+
+  --disable-parsers
+  --enable-parser=aac,ac3,av1,flac,h264,hevc,mjpeg,mpeg4video,mpegaudio,opus,vorbis,vp8,vp9
+
+  --disable-bsfs
+  --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb
+
+  --disable-protocols
+  --enable-protocol=file,pipe
+
+  --disable-filters
 )
 
 if(WIN32)
@@ -81,6 +107,10 @@ if(APPLE)
 
     --enable-avfoundation
     --enable-videotoolbox
+
+    # VideoToolbox hardware encoder/decoder wrappers
+    --enable-encoder=h264_videotoolbox,hevc_videotoolbox
+    --enable-decoder=h264_videotoolbox,hevc_videotoolbox
   )
 
   if(NOT IOS)
@@ -105,6 +135,10 @@ elseif(ANDROID)
 
     --enable-jni
     --enable-mediacodec
+
+    # MediaCodec hardware encoder/decoder wrappers
+    --enable-encoder=h264_mediacodec
+    --enable-decoder=h264_mediacodec,hevc_mediacodec
   )
 
   if(arch MATCHES "x86_32")
