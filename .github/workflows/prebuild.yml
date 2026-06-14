@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - 'peartube/**'
+permissions:
+  contents: read
 jobs:
   prebuild:
     strategy:
