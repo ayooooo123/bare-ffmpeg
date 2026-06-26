@@ -10,7 +10,14 @@ option(BARE_FFMPEG_ENABLE_GPL "Enable GPL-licensed features (e.g., x264)" OFF)
 
 fetch_package("github:holepunchto/libjstl#ca590d6")
 
-set(ffmpeg_features dav1d opus vpx)
+# PearTube is the universal transcoder: it must DECODE a broad set of input
+# codecs (to re-encode for cast targets), but only ever ENCODES H.264 + AAC.
+# So we keep dav1d (the only AV1 decoder; native AV1 decode is too slow to
+# transcode) but drop the libvpx and libopus *external* libraries: FFmpeg's
+# native vp8/vp9/opus decoders (enabled in cmake/ports/ffmpeg/port.cmake) cover
+# the same inputs, and libvpx/libopus only add value for ENCODING, which we
+# never do. Net effect: identical decode coverage, ~1.5-2.5 MB/ABI smaller.
+set(ffmpeg_features dav1d)
 
 if(BARE_FFMPEG_ENABLE_GPL)
   list(APPEND ffmpeg_features gpl x264)

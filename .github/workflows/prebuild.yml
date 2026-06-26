@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'peartube/**'
+      - 'claude/**'
 jobs:
   prebuild:
     strategy:
