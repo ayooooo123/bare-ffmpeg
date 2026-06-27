@@ -65,21 +65,18 @@ set(args
   --enable-muxer=mov
   --enable-muxer=mpegts
 
+  # Decoder allowlist. Kept in lockstep with the backend's JS decode-codec
+  # allowlist (ALLOWED_DECODE_CODEC_NAMES in
+  # packages/backend/src/transcode/ffmpeg-utils.mjs): the backend never
+  # instantiates a decoder for a codec outside that set, so building any other
+  # decoder only adds dead, untrusted-input-reachable attack surface. AV1
+  # decodes through libdav1d / libvpx when those features are enabled below.
   --enable-decoder=aac
-  --enable-decoder=ac3
-  --enable-decoder=alac
-  --enable-decoder=eac3
   --enable-decoder=flac
   --enable-decoder=h264
   --enable-decoder=hevc
   --enable-decoder=mp3
-  --enable-decoder=mpeg2video
-  --enable-decoder=mpeg4
   --enable-decoder=opus
-  --enable-decoder=pcm_s16be
-  --enable-decoder=pcm_s16le
-  --enable-decoder=prores
-  --enable-decoder=theora
   --enable-decoder=vorbis
   --enable-decoder=vp8
   --enable-decoder=vp9
