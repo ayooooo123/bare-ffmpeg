@@ -36,6 +36,13 @@ set(args
   --disable-everything
   --enable-small
 
+  # Defense-in-depth: --disable-everything above already excludes every decoder
+  # not explicitly enabled below, so the obscure/abandoned RASC decoder (the
+  # decode_dlta() heap-OOB-write and CVE-2026-12706 use-after-free class) is not
+  # built in. Pin it off explicitly so it can never be reintroduced by a future
+  # broad --enable-decoder change, and to document intent.
+  --disable-decoder=rasc
+
   --enable-avcodec
   --enable-avformat
   --enable-avutil
