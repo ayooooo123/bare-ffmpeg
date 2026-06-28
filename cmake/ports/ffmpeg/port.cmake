@@ -65,18 +65,36 @@ set(args
   --enable-muxer=mov
   --enable-muxer=mpegts
 
-  # Decoder allowlist. Kept in lockstep with the backend's JS decode-codec
-  # allowlist (ALLOWED_DECODE_CODEC_NAMES in
-  # packages/backend/src/transcode/ffmpeg-utils.mjs): the backend never
-  # instantiates a decoder for a codec outside that set, so building any other
-  # decoder only adds dead, untrusted-input-reachable attack surface. AV1
-  # decodes through libdav1d / libvpx when those features are enabled below.
+  # Decoder set — kept in lockstep with the backend's JS decode allowlist
+  # (ALLOWED_DECODE_CODEC_NAMES in
+  # packages/backend/src/transcode/ffmpeg-utils.mjs). Broad coverage of the
+  # mainstream codecs PearTube may need to decode for thumbnails/transcodes;
+  # --disable-everything (above) plus the explicit --disable-decoder=rasc keep
+  # FFmpeg's obscure/abandoned decoder tail (RASC and friends — the
+  # memory-corruption attack surface) out of the build. AV1 decodes through
+  # libdav1d / libvpx when those features are enabled below.
   --enable-decoder=aac
+  --enable-decoder=ac3
+  --enable-decoder=alac
+  --enable-decoder=eac3
   --enable-decoder=flac
   --enable-decoder=h264
   --enable-decoder=hevc
   --enable-decoder=mp3
+  --enable-decoder=mpeg2video
+  --enable-decoder=mpeg4
   --enable-decoder=opus
+  --enable-decoder=pcm_alaw
+  --enable-decoder=pcm_f32be
+  --enable-decoder=pcm_f32le
+  --enable-decoder=pcm_mulaw
+  --enable-decoder=pcm_s16be
+  --enable-decoder=pcm_s16le
+  --enable-decoder=pcm_s24le
+  --enable-decoder=pcm_s32le
+  --enable-decoder=pcm_u8
+  --enable-decoder=prores
+  --enable-decoder=theora
   --enable-decoder=vorbis
   --enable-decoder=vp8
   --enable-decoder=vp9
